@@ -21,6 +21,7 @@ pkgs.mkShell {
     echo "Dev-Environment for ${shellName}"
 
     export JAVA_HOME="${devDependencies.jdk24}"
+    export MAVEN_OPTS="--enable-native-access=ALL-UNNAMED"
 
     ${builtins.concatStringsSep "\n" (
       map (name: ''
