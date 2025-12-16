@@ -27,6 +27,7 @@ public class Shell {
     public Shell() {
         this.commands.put("exit", this::exit);
         this.commands.put("echo", this::echo);
+        this.commands.put("type", this::type);
     }
 
     public void start() {
@@ -73,5 +74,16 @@ public class Shell {
     private String echo(final ExecutionContext ec) {
         if (ec.args == null) return "";
         return String.join(" ", ec.args);
+    }
+
+    private String type (final ExecutionContext ec) {
+        if (ec.args != null && this.commands.containsKey(ec.args[0])) {
+            return ec.args[0] + " is a shell builtin";
+        }
+        // TODO: command source, builtin or otherwise
+        if (ec.args != null) {
+            return ec.args[0] + ": not found";
+        }
+        return "no command specified";
     }
 }
