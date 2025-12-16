@@ -34,16 +34,18 @@ public class Shell {
         String command;
         ExecutionContext ec;
         Function<ExecutionContext, String> method;
+        String result;
         while (this.running) {
-            System.out.print("$ ");
+            this.print("$ ");
             command = scanner.nextLine();
             ec = new ExecutionContext(command);
             method = resolveCommand(ec.commandName);
             if (method == null) {
-                System.out.println(ec.commandName+ ": command not found");
+                this.println(ec.commandName+ ": command not found");
                 continue;
             }
-            System.out.println(method.apply(ec));
+            result = method.apply(ec);
+            if (result != null) this.println(result);
         }
     }
 
@@ -52,10 +54,20 @@ public class Shell {
         return this.commands.get(command);
     }
 
+    // wrap for clarity
+    private void println(final String out) {
+        System.out.println(out);
+    }
+
+    // wrap for clarity
+    private void print(final String out) {
+        System.out.print(out);
+    }
+
   //TODO: refactor commands
     private String exit(final ExecutionContext ec) {
         this.running = false;
-        return "Bye";
+        return null;
     }
 
     private String echo(final ExecutionContext ec) {
