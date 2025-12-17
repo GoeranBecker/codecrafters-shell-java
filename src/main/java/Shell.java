@@ -82,7 +82,7 @@ public class Shell {
                     .filter(path -> Files.isRegularFile(path))
                     .filter(path-> Files.isExecutable(path))
                     .map(path -> path.toString())
-                    .filter(file -> file.endsWith(command))
+                    .filter(file -> file.endsWith("/" + command))
                     .findFirst();
             } catch (IOException e) {
                 continue;
