@@ -3,10 +3,22 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Arrays;
 import java.util.function.Function;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.Optional;
+
+import java.io.IOException;
+import java.io.File;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 
 public class Shell {
     private boolean running = true;
-    private final Map<String, Function<ExecutionContext, String>> commands = new HashMap<>();
+    private final Map<String, Function<ExecutionContext, String>> builtins = new HashMap<>();
 
     // TODO: refactor
     private static class ExecutionContext {
@@ -19,15 +31,15 @@ public class Shell {
             if (allArgs.length > 1) {
                 this.args = Arrays.copyOfRange(allArgs, 1, allArgs.length);
             } else {
-                this.args = null;
+                this.args = new String[0];
             }
         }
     }
 
     public Shell() {
-        this.commands.put("exit", this::exit);
-        this.commands.put("echo", this::echo);
-        this.commands.put("type", this::type);
+        this.builtins.put("exit", this::exit);
+        this.builtins.put("echo", this::echo);
+        this.builtins.put("type", this::type);
     }
 
     public void start() {
@@ -40,7 +52,11 @@ public class Shell {
             this.print("$ ");
             command = scanner.nextLine();
             ec = new ExecutionContext(command);
-            method = resolveCommand(ec.commandName);
+            method = resolveBuiltins(ec.commandName);
+            // if (method == null) {
+            //     final String path = this.resolvePATH(ec.commandName);
+            //     if (path != null) method = _ -> path;
+            // }
             if (method == null) {
                 this.println(ec.commandName+ ": command not found");
                 continue;
@@ -50,9 +66,30 @@ public class Shell {
         }
     }
 
-    private Function<ExecutionContext, String> resolveCommand(final String command) {
+    private Function<ExecutionContext, String> resolveBuiltins(final String command) {
         if (command == null || command.isEmpty()) return null;
-        return this.commands.get(command);
+        return this.builtins.get(command);
+    }
+    
+    private String resolvePATH(final String command) {
+        if (command == null || command.isEmpty()) return null;
+        
+        final String PATH = System.getenv("PATH");
+        Optional<String> exePath;
+        for(String dir: PATH.split(File.pathSeparator)){
+            try (Stream<Path> stream = Files.list(Paths.get(dir))) {
+                exePath = stream
+                    .filter(path -> Files.isRegularFile(path))
+                    .filter(path-> Files.isExecutable(path))
+                    .map(path -> path.toString())
+                    .filter(file -> file.endsWith(command))
+                    .findFirst();
+            } catch (IOException e) {
+                continue;
+            }
+            if (exePath.isPresent()) return exePath.get();
+        }
+        return null;
     }
 
     // wrap for clarity
@@ -72,18 +109,21 @@ public class Shell {
     }
 
     private String echo(final ExecutionContext ec) {
-        if (ec.args == null) return "";
+        if (ec.args.length == 0) return "";
         return String.join(" ", ec.args);
     }
 
     private String type (final ExecutionContext ec) {
-        if (ec.args != null && this.commands.containsKey(ec.args[0])) {
+        if (ec.args.length == 0) return "no command specified";
+
+        if (this.resolveBuiltins(ec.args[0]) != null) {
             return ec.args[0] + " is a shell builtin";
         }
-        // TODO: command source, builtin or otherwise
-        if (ec.args != null) {
-            return ec.args[0] + ": not found";
+        
+        final String path = resolvePATH(ec.args[0]);
+        if (path != null && !path.isEmpty()) {
+            return ec.args[0] + " is " + path;
         }
-        return "no command specified";
+        return ec.args[0] + ": not found";
     }
 }
